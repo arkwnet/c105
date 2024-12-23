@@ -9,6 +9,10 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.ConnectivityManager;
+import android.net.LinkAddress;
+import android.net.LinkProperties;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.view.View;
@@ -40,7 +44,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import fi.iki.elonen.NanoHTTPD;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private Context context;
@@ -64,8 +71,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private ArrayList<Map<String, String>> listSelect = new ArrayList<>();
     private SimpleAdapter simpleAdapter;
     private TextView textView;
+    private TextView textViewIP;
     private int total = 0;
     private int id = 0;
+    private JSONObject display = new JSONObject();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,6 +110,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         items.add(new Item("ひらがないれーす", 100, R.drawable.gamecd));
 
         textView = findViewById(R.id.text_view);
+        textViewIP = findViewById(R.id.text_view_ip);
         ListView listViewSelect = findViewById(R.id.list_select);
         simpleAdapter = new SimpleAdapter(
             this,
@@ -135,6 +145,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 setCustomerDisplay(items.get(index).getName(), "" + items.get(index).getPrice(), "小計", "" + total);
             }
         });
+
+        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        LinkProperties linkProperties = connectivityManager.getLinkProperties(connectivityManager.getActiveNetwork());
+        List<LinkAddress> linkAddresses = linkProperties.getLinkAddresses();
+        for (int i = 0; i < linkAddresses.size(); i++) {
+            String address = linkAddresses.get(i).getAddress().toString().replace("/", "");
+            if (address.contains("192")) {
+                textViewIP.setText("IP: " + address);
+                break;
+            }
+        }
+        setCustomerDisplay("", "", "", "");
+        try {
+            WebServer webServer = new WebServer();
+            webServer.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         findViewById(R.id.button_purchase).setOnClickListener(this);
         findViewById(R.id.button_card).setOnClickListener(this);
@@ -406,16 +434,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void setCustomerDisplay(String upperLeft, String upperRight, String lowerLeft, String lowerRight) {
-        JSONObject json = new JSONObject();
         try {
-            json.put("upper_left", upperLeft);
-            json.put("upper_right", upperRight);
-            json.put("lower_left", lowerLeft);
-            json.put("lower_right", lowerRight);
+            display.put("upper_left", upperLeft);
+            display.put("upper_right", upperRight);
+            display.put("lower_left", lowerLeft);
+            display.put("lower_right", lowerRight);
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
-        sendPost("/display", json);
     }
 
     private void sendPost(String url, JSONObject json) {
@@ -458,6 +484,24 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_PERMISSION){
             checkPermission();
+        }
+    }
+
+    private class WebServer extends NanoHTTPD {
+        public WebServer() {
+            super(5300);
+        }
+
+        @Override
+        public Response serve(IHTTPSession session) {
+            String msg;
+            if (session.getUri().equals("/display")) {
+                msg = display.toString();
+            } else {
+                msg = "{}";
+            }
+            Response response = newFixedLengthResponse(NanoHTTPD.Response.Status.OK, "application/json", msg);
+            return response;
         }
     }
 }
