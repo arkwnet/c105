@@ -232,7 +232,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             int cash = intent.getIntExtra("cash", 0);
             int change = intent.getIntExtra("change", 0);
             // レシート印刷
-            printImage(BitmapFactory.decodeResource(getResources(), R.drawable.receipt));
+            printImage(BitmapFactory.decodeResource(getResources(), R.drawable.receipt1));
+            printText("コミックマーケット105\n2日目(月) 西2ホール き36b\n", 0);
+            printImage(BitmapFactory.decodeResource(getResources(), R.drawable.receipt2));
             printText("ご購入になりました商品の\n", 0);
             printText("サポート情報はこちら ↓\n", 0);
             printText("https://arkw.work/doujin\n", 0);
@@ -251,18 +253,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             }
             printLine();
-            printText("合計\n", 0);
-            printText("￥ " + total + "\n", 2);
+            printDoubleText("合計", "￥ " + total);
             if (payment.equals(R.string.payment_money)) {
                 setCustomerDisplay("お預かり", "" + cash, "お釣り", "" + change);
-                printText("お預かり\n", 0);
+                printDoubleText("お預かり", "￥ " + cash);
             } else {
                 setCustomerDisplay(payment, "" + cash, "お釣り", "" + change);
-                printText(payment + "\n", 0);
+                printDoubleText(payment, "￥ " + cash);
             }
-            printText("￥ " + cash + "\n", 2);
-            printText("お釣り\n", 0);
-            printText("￥ " + change + "\n", 2);
+            printDoubleText("お釣り", "￥ " + change);
             printLine();
             printText("X/Twitter: @arkw0\n", 0);
             printText("Misskey: @arkw@mi.arkw.work\n", 0);
@@ -337,6 +336,27 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         };
         try {
             sunmiPrinterService.printText(text, new InnerResultCallback() {
+                @Override
+                public void onRunResult(boolean isSuccess) throws RemoteException {
+                }
+                @Override
+                public void onReturnString(String result) throws RemoteException {
+                }
+                @Override
+                public void onRaiseException(int code, String msg) throws RemoteException {
+                }
+                @Override
+                public void onPrintResult(int code, String msg) throws RemoteException {
+                }
+            });
+        } catch (RemoteException e) {
+            e.printStackTrace();
+        };
+    }
+
+    private void printDoubleText(String textLeft, String textRight) {
+        try {
+            sunmiPrinterService.printColumnsText(new String[]{textLeft, textRight}, new int[]{23, 8}, new int[]{0, 2}, new InnerResultCallback() {
                 @Override
                 public void onRunResult(boolean isSuccess) throws RemoteException {
                 }
